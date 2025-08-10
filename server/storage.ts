@@ -7,9 +7,10 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
-  updateUserBalance(data: UpdateUserBalance): Promise<User>;
+  updateUserBalance(userId: string, balances: { cadBalance?: number; btcBalance?: number }): Promise<User>;
+  updateUserBalanceAdmin(data: UpdateUserBalance): Promise<User>;
   
-  getCurrentExchangeRate(): Promise<ExchangeRate | undefined>;
+  getCurrentRate(): Promise<ExchangeRate | undefined>;
   updateExchangeRate(rate: InsertExchangeRate): Promise<ExchangeRate>;
   
   getSiteSettings(): Promise<SiteSettings | undefined>;
@@ -87,7 +88,23 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values());
   }
 
-  async updateUserBalance(data: UpdateUserBalance): Promise<User> {
+  async updateUserBalance(userId: string, balances: { cadBalance?: number; btcBalance?: number }): Promise<User> {
+    const user = this.users.get(userId);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const updatedUser = {
+      ...user,
+      cadBalance: balances.cadBalance !== undefined ? balances.cadBalance.toString() : user.cadBalance,
+      btcBalance: balances.btcBalance !== undefined ? balances.btcBalance.toString() : user.btcBalance,
+    };
+
+    this.users.set(userId, updatedUser);
+    return updatedUser;
+  }
+
+  async updateUserBalanceAdmin(data: UpdateUserBalance): Promise<User> {
     const user = this.users.get(data.userId);
     if (!user) {
       throw new Error("User not found");
@@ -103,7 +120,7 @@ export class MemStorage implements IStorage {
     return updatedUser;
   }
 
-  async getCurrentExchangeRate(): Promise<ExchangeRate | undefined> {
+  async getCurrentRate(): Promise<ExchangeRate | undefined> {
     return this.exchangeRate;
   }
 

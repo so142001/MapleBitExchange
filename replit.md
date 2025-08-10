@@ -41,12 +41,14 @@ Preferred communication style: Simple, everyday language.
 - **Site Settings**: Configurable processing fees, transaction limits, and update intervals
 - **Manual Overrides**: Admin capability to override automatic rate updates
 - **Rate Caching**: 30-second refresh intervals with automatic background updates
+- **Trading System**: Real buy/sell transactions that modify user CAD and BTC balances
+- **Balance Validation**: Sufficient balance checks before processing trades
 
 ### Component Architecture
 - **Conversion Calculator**: Real-time bidirectional CAD/BTC conversion with fee calculations
 - **Rate Display**: Live exchange rate visualization with 24h change indicators
 - **Price Chart**: Interactive Chart.js integration for historical price visualization
-- **Mock Exchange**: Demonstration trading interface for user engagement
+- **Real Trading Interface**: Fully functional Bitcoin trading with user balance integration
 - **Admin Dashboard**: Comprehensive management interface for rates and settings
 
 ### User Interface Design

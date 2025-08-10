@@ -258,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const balanceData = updateUserBalanceSchema.parse(req.body);
-      const updatedUser = await storage.updateUserBalance(balanceData);
+      const updatedUser = await storage.updateUserBalanceAdmin(balanceData);
       
       res.json(updatedUser);
     } catch (error) {
@@ -287,6 +287,121 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch statistics" });
+    }
+  });
+
+  // Trading endpoints
+  app.post("/api/trade/buy", async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { cadAmount } = req.body;
+      if (!cadAmount || cadAmount <= 0) {
+        return res.status(400).json({ message: "Invalid CAD amount" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has enough CAD balance
+      if (parseFloat(user.cadBalance || "0") < cadAmount) {
+        return res.status(400).json({ message: "Insufficient CAD balance" });
+      }
+
+      // Get current exchange rate
+      const rate = await storage.getCurrentRate();
+      if (!rate) {
+        return res.status(500).json({ message: "Exchange rate unavailable" });
+      }
+
+      const exchangeRate = parseFloat(rate.btcCadRate);
+      const btcAmount = cadAmount / exchangeRate;
+
+      // Update user balances
+      const newCadBalance = parseFloat(user.cadBalance || "0") - cadAmount;
+      const newBtcBalance = parseFloat(user.btcBalance || "0") + btcAmount;
+
+      await storage.updateUserBalance(userId, {
+        cadBalance: newCadBalance,
+        btcBalance: newBtcBalance
+      });
+
+      res.json({
+        success: true,
+        transaction: {
+          type: "buy",
+          cadAmount,
+          btcAmount,
+          exchangeRate,
+          newCadBalance,
+          newBtcBalance
+        }
+      });
+    } catch (error) {
+      console.error("Buy order error:", error);
+      res.status(500).json({ message: "Trade failed" });
+    }
+  });
+
+  app.post("/api/trade/sell", async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const { btcAmount } = req.body;
+      if (!btcAmount || btcAmount <= 0) {
+        return res.status(400).json({ message: "Invalid BTC amount" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Check if user has enough BTC balance
+      if (parseFloat(user.btcBalance || "0") < btcAmount) {
+        return res.status(400).json({ message: "Insufficient BTC balance" });
+      }
+
+      // Get current exchange rate
+      const rate = await storage.getCurrentRate();
+      if (!rate) {
+        return res.status(500).json({ message: "Exchange rate unavailable" });
+      }
+
+      const exchangeRate = parseFloat(rate.btcCadRate);
+      const cadAmount = btcAmount * exchangeRate;
+
+      // Update user balances
+      const newCadBalance = parseFloat(user.cadBalance || "0") + cadAmount;
+      const newBtcBalance = parseFloat(user.btcBalance || "0") - btcAmount;
+
+      await storage.updateUserBalance(userId, {
+        cadBalance: newCadBalance,
+        btcBalance: newBtcBalance
+      });
+
+      res.json({
+        success: true,
+        transaction: {
+          type: "sell",
+          btcAmount,
+          cadAmount,
+          exchangeRate,
+          newCadBalance,
+          newBtcBalance
+        }
+      });
+    } catch (error) {
+      console.error("Sell order error:", error);
+      res.status(500).json({ message: "Trade failed" });
     }
   });
 
