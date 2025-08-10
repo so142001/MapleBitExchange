@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   BarChart3, 
   DollarSign, 
@@ -20,6 +21,7 @@ import {
 import { checkAdminAuth, logoutAdmin } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { UserManagement } from "@/components/user-management";
 
 export default function Admin() {
   const [location, setLocation] = useLocation();
@@ -216,12 +218,21 @@ export default function Admin() {
         <main className="flex-1 overflow-y-auto p-8">
           {/* Dashboard Overview */}
           <div className="mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Dashboard Overview</h2>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Admin Dashboard</h2>
             <p className="text-gray-600">Monitor exchange performance and manage system settings</p>
           </div>
 
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <Tabs defaultValue="overview" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="rates">Exchange Rates</TabsTrigger>
+              <TabsTrigger value="settings">Settings</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <Card className="p-6">
               <div className="flex items-center justify-between">
                 <div>
@@ -285,11 +296,17 @@ export default function Admin() {
               <div className="mt-4 flex items-center text-sm text-gray-600">
                 <span>{stats?.uptime || "99.9%"} uptime</span>
               </div>
-            </Card>
-          </div>
+              </Card>
+              </div>
+            </TabsContent>
 
-          {/* Exchange Rate Management */}
-          <Card className="p-8 mb-8">
+            <TabsContent value="users">
+              <UserManagement />
+            </TabsContent>
+
+            <TabsContent value="rates" className="space-y-6">
+              {/* Exchange Rate Management */}
+              <Card className="p-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">Manual Rate Override</h3>
             <div className="grid md:grid-cols-2 gap-8">
               <div>
@@ -331,11 +348,13 @@ export default function Admin() {
                 {resetRateMutation.isPending && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
                 Reset to API Rate
               </Button>
-            </div>
-          </Card>
+              </div>
+              </Card>
+            </TabsContent>
 
-          {/* System Settings */}
-          <Card className="p-8">
+            <TabsContent value="settings">
+              {/* System Settings */}
+              <Card className="p-8">
             <h3 className="text-2xl font-bold text-gray-900 mb-6">System Settings</h3>
             <form onSubmit={handleSettingsSubmit} className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -413,9 +432,11 @@ export default function Admin() {
                   {updateSettingsMutation.isPending && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
                   Save Settings
                 </Button>
-              </div>
-            </form>
-          </Card>
+                </div>
+              </form>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </main>
       </div>
     </div>

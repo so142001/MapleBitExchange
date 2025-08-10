@@ -22,7 +22,7 @@ export function ConversionCalculator() {
     queryKey: ["/api/settings"],
   });
 
-  const processingFee = Number(settings?.processingFeePercent || 0.5);
+  const processingFee = Number((settings as any)?.processingFeePercent || 0.5);
 
   useEffect(() => {
     calculateConversion();
@@ -40,7 +40,7 @@ export function ConversionCalculator() {
       return;
     }
 
-    const exchangeRate = parseFloat(rate.btcCadRate);
+    const exchangeRate = parseFloat((rate as any).btcCadRate);
     let result: number;
 
     if (fromCurrency === "CAD" && toCurrency === "BTC") {
@@ -150,7 +150,7 @@ export function ConversionCalculator() {
           Calculate Conversion
         </Button>
 
-        {rate && (
+{rate ? (
           <div className="mt-6 p-4 bg-blue-50 rounded-lg">
             <div className="text-sm text-gray-600 space-y-1">
               <div className="flex justify-between">
@@ -158,7 +158,7 @@ export function ConversionCalculator() {
                 <span>1 BTC = {new Intl.NumberFormat('en-CA', {
                   style: 'currency',
                   currency: 'CAD'
-                }).format(Number(rate.btcCadRate))}</span>
+                }).format(Number((rate as any).btcCadRate))}</span>
               </div>
               <div className="flex justify-between">
                 <span>Processing Fee:</span>
@@ -170,7 +170,7 @@ export function ConversionCalculator() {
               </div>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </Card>
   );

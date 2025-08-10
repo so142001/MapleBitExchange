@@ -75,11 +75,11 @@ export function ExchangeRateDisplay() {
           <div className="bg-gradient-to-r from-primary to-blue-600 rounded-xl p-8 text-white">
             <div className="text-sm font-medium mb-2">1 BTC =</div>
             <div className="text-4xl font-bold mb-2">
-              {rate ? formatCurrency(rate.btcCadRate) : "Loading..."}
+              {rate ? formatCurrency((rate as any).btcCadRate) : "Loading..."}
             </div>
             <div className="text-lg">CAD</div>
             <div className="flex items-center justify-center mt-3">
-              {rate?.change24h && formatChange(rate.change24h)}
+              {(rate as any)?.change24h && formatChange((rate as any).change24h)}
             </div>
           </div>
         </div>
@@ -88,19 +88,19 @@ export function ExchangeRateDisplay() {
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-gray-600 text-sm">24h High</div>
             <div className="text-xl font-semibold text-success">
-              {rate?.high24h ? formatCurrency(rate.high24h) : "N/A"}
+              {(rate as any)?.high24h ? formatCurrency((rate as any).high24h) : "N/A"}
             </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-gray-600 text-sm">24h Low</div>
             <div className="text-xl font-semibold text-error">
-              {rate?.low24h ? formatCurrency(rate.low24h) : "N/A"}
+              {(rate as any)?.low24h ? formatCurrency((rate as any).low24h) : "N/A"}
             </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">
             <div className="text-gray-600 text-sm">Volume</div>
             <div className="text-xl font-semibold">
-              {rate?.volume24h ? `$${Number(rate.volume24h).toLocaleString()}` : "N/A"}
+              {(rate as any)?.volume24h ? `$${Number((rate as any).volume24h).toLocaleString()}` : "N/A"}
             </div>
           </div>
           <div className="bg-gray-50 rounded-lg p-4">

@@ -7,6 +7,11 @@ export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email").notNull().unique(),
+  cadBalance: decimal("cad_balance", { precision: 15, scale: 2 }).default("0.00"),
+  btcBalance: decimal("btc_balance", { precision: 15, scale: 8 }).default("0.00000000"),
+  isAdmin: boolean("is_admin").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const exchangeRates = pgTable("exchange_rates", {
@@ -33,6 +38,14 @@ export const siteSettings = pgTable("site_settings", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  email: true,
+});
+
+export const updateUserBalanceSchema = createInsertSchema(users).pick({
+  cadBalance: true,
+  btcBalance: true,
+}).extend({
+  userId: z.string(),
 });
 
 export const insertExchangeRateSchema = createInsertSchema(exchangeRates).omit({
@@ -50,3 +63,4 @@ export type ExchangeRate = typeof exchangeRates.$inferSelect;
 export type InsertExchangeRate = z.infer<typeof insertExchangeRateSchema>;
 export type SiteSettings = typeof siteSettings.$inferSelect;
 export type InsertSiteSettings = z.infer<typeof insertSiteSettingsSchema>;
+export type UpdateUserBalance = z.infer<typeof updateUserBalanceSchema>;

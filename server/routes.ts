@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import session from "express-session";
-import { insertExchangeRateSchema, insertSiteSettingsSchema } from "@shared/schema";
+import { insertExchangeRateSchema, insertSiteSettingsSchema, insertUserSchema, updateUserBalanceSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware for admin authentication
@@ -13,8 +13,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 } // 24 hours
   }));
 
-  // Admin authentication routes
-  app.post("/api/admin/login", async (req, res) => {
+  // User registration
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const userData = insertUserSchema.parse(req.body);
+      
+      // Check if username or email already exists
+      const existingUser = await storage.getUserByUsername(userData.username);
+      const existingEmail = await storage.getUserByEmail(userData.email);
+      
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+      
+      if (existingEmail) {
+        return res.status(400).json({ message: "Email already exists" });
+      }
+
+      const newUser = await storage.createUser(userData);
+      
+      (req.session as any).userId = newUser.id;
+      (req.session as any).isAdmin = newUser.isAdmin;
+      
+      res.json({ 
+        success: true, 
+        user: { 
+          id: newUser.id, 
+          username: newUser.username, 
+          email: newUser.email,
+          cadBalance: newUser.cadBalance,
+          btcBalance: newUser.btcBalance,
+          isAdmin: newUser.isAdmin
+        } 
+      });
+    } catch (error) {
+      res.status(400).json({ message: "Registration failed" });
+    }
+  });
+
+  // User login
+  app.post("/api/auth/login", async (req, res) => {
     try {
       const { username, password } = req.body;
       
@@ -24,7 +62,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       (req.session as any).userId = user.id;
-      (req.session as any).isAdmin = true;
+      (req.session as any).isAdmin = user.isAdmin;
+      
+      res.json({ 
+        success: true, 
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          email: user.email,
+          cadBalance: user.cadBalance,
+          btcBalance: user.btcBalance,
+          isAdmin: user.isAdmin
+        } 
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Login failed" });
+    }
+  });
+
+  // Admin authentication routes (backwards compatibility)
+  app.post("/api/admin/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      const user = await storage.getUserByUsername(username);
+      if (!user || user.password !== password || !user.isAdmin) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      (req.session as any).userId = user.id;
+      (req.session as any).isAdmin = user.isAdmin;
       
       res.json({ success: true, user: { id: user.id, username: user.username } });
     } catch (error) {
@@ -32,6 +99,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Logout failed" });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Admin logout (backwards compatibility)
   app.post("/api/admin/logout", (req, res) => {
     req.session.destroy((err) => {
       if (err) {
@@ -39,6 +116,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json({ success: true });
     });
+  });
+
+  app.get("/api/auth/user", async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      res.json({
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        cadBalance: user.cadBalance,
+        btcBalance: user.btcBalance,
+        isAdmin: user.isAdmin,
+        createdAt: user.createdAt
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
   });
 
   app.get("/api/admin/status", (req, res) => {
@@ -132,6 +235,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User management endpoints for admin
+  app.get("/api/admin/users", async (req, res) => {
+    try {
+      const isAdmin = (req.session as any)?.isAdmin;
+      if (!isAdmin) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post("/api/admin/users/balance", async (req, res) => {
+    try {
+      const isAdmin = (req.session as any)?.isAdmin;
+      if (!isAdmin) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const balanceData = updateUserBalanceSchema.parse(req.body);
+      const updatedUser = await storage.updateUserBalance(balanceData);
+      
+      res.json(updatedUser);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user balance" });
+    }
+  });
+
   // Statistics endpoint for admin dashboard
   app.get("/api/admin/stats", async (req, res) => {
     try {
@@ -140,11 +274,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      // Mock statistics for demo purposes
+      const users = await storage.getAllUsers();
       const stats = {
         totalExchanges: 1234,
         volume24h: "2400000",
-        activeUsers: 567,
+        activeUsers: users.length,
+        totalUsers: users.length,
         systemStatus: "online",
         uptime: "99.9%"
       };

@@ -22,7 +22,7 @@ export function MockExchange() {
     const amount = parseFloat(cadAmount.replace(/,/g, ""));
     if (isNaN(amount)) return "0.00000000";
     
-    const exchangeRate = parseFloat(rate.btcCadRate);
+    const exchangeRate = parseFloat((rate as any).btcCadRate);
     const btcAmount = amount / exchangeRate;
     return btcAmount.toFixed(8);
   };
@@ -32,7 +32,7 @@ export function MockExchange() {
     const amount = parseFloat(btcAmount);
     if (isNaN(amount)) return "$0.00";
     
-    const exchangeRate = parseFloat(rate.btcCadRate);
+    const exchangeRate = parseFloat((rate as any).btcCadRate);
     const cadAmount = amount * exchangeRate;
     return new Intl.NumberFormat('en-CA', {
       style: 'currency',
