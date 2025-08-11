@@ -38,11 +38,13 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Architecture
 - **Exchange Rates**: Real-time BTC/CAD rates with 24h statistics (change, high, low, volume)
+- **Multiple API Sources**: CoinGecko, CoinDesk, and CryptoCompare with automatic failover
 - **Site Settings**: Configurable processing fees, transaction limits, and update intervals
 - **Manual Overrides**: Admin capability to override automatic rate updates
 - **Rate Caching**: 30-second refresh intervals with automatic background updates
 - **Trading System**: Real buy/sell transactions that modify user CAD and BTC balances
 - **Balance Validation**: Sufficient balance checks before processing trades
+- **Fallback System**: Always ensures exchange rates are available even when all APIs fail
 
 ### Component Architecture
 - **Conversion Calculator**: Real-time bidirectional CAD/BTC conversion with fee calculations

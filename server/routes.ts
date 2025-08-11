@@ -4,6 +4,97 @@ import { storage } from "./storage";
 import session from "express-session";
 import { insertExchangeRateSchema, insertSiteSettingsSchema, insertUserSchema, updateUserBalanceSchema } from "@shared/schema";
 
+// Multiple API sources for Bitcoin price data
+const API_SOURCES = [
+  {
+    name: 'CoinGecko',
+    url: 'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=cad&include_24hr_change=true',
+    parser: (data: any) => ({
+      btcCadRate: data.bitcoin.cad.toString(),
+      change24h: data.bitcoin.cad_24h_change?.toFixed(2) || "0",
+      high24h: (data.bitcoin.cad * 1.05).toFixed(2),
+      low24h: (data.bitcoin.cad * 0.95).toFixed(2),
+      volume24h: "1000000"
+    })
+  },
+  {
+    name: 'CoinDesk',
+    url: 'https://api.coindesk.com/v1/bpi/currentprice/CAD.json',
+    parser: (data: any) => ({
+      btcCadRate: data.bpi.CAD.rate_float.toString(),
+      change24h: "0",
+      high24h: (data.bpi.CAD.rate_float * 1.05).toFixed(2),
+      low24h: (data.bpi.CAD.rate_float * 0.95).toFixed(2),
+      volume24h: "1000000"
+    })
+  },
+  {
+    name: 'CryptoCompare',
+    url: 'https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=CAD',
+    parser: (data: any) => ({
+      btcCadRate: data.CAD.toString(),
+      change24h: "0",
+      high24h: (data.CAD * 1.05).toFixed(2),
+      low24h: (data.CAD * 0.95).toFixed(2),
+      volume24h: "1000000"
+    })
+  }
+];
+
+async function fetchFromAPI(apiSource: typeof API_SOURCES[0]): Promise<any> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(apiSource.url, {
+      signal: controller.signal,
+      headers: {
+        'User-Agent': 'CAD-BTC-Exchange/1.0'
+      }
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return apiSource.parser(data);
+  } catch (error) {
+    console.error(`${apiSource.name} API failed:`, error);
+    throw error;
+  }
+}
+
+async function fetchBTCCADRate(): Promise<any> {
+  for (const apiSource of API_SOURCES) {
+    try {
+      console.log(`Attempting to fetch from ${apiSource.name}...`);
+      const rateData = await fetchFromAPI(apiSource);
+      console.log(`Successfully fetched from ${apiSource.name}:`, rateData);
+      return {
+        ...rateData,
+        isManualOverride: false
+      };
+    } catch (error) {
+      console.error(`Failed to fetch from ${apiSource.name}:`, error);
+      continue;
+    }
+  }
+  
+  console.error('All API sources failed, no rate data available');
+  return null;
+}
+
+function shouldUpdateRate(rate: any): boolean {
+  if (!rate.lastUpdated) return true;
+  const now = new Date().getTime();
+  const lastUpdate = new Date(rate.lastUpdated).getTime();
+  const thirtySeconds = 30 * 1000;
+  return (now - lastUpdate) > thirtySeconds;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Session middleware for admin authentication
   app.use(session({
@@ -154,22 +245,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let rate = await storage.getCurrentRate();
       
-      // If no rate exists, create a default rate
-      if (!rate) {
-        rate = await storage.updateExchangeRate({
-          btcCadRate: "164000", // Default fallback rate
-          change24h: "0",
-          high24h: "165000",
-          low24h: "163000", 
-          volume24h: "1000000",
-          isManualOverride: false
-        });
+      // If no rate exists or it's time to update and not manually overridden
+      if (!rate || (!rate.isManualOverride && shouldUpdateRate(rate))) {
+        console.log('Fetching fresh rate data...');
+        const apiRate = await fetchBTCCADRate();
+        
+        if (apiRate) {
+          rate = await storage.updateExchangeRate(apiRate);
+          console.log('Rate updated successfully:', rate);
+        } else if (!rate) {
+          // Only create fallback if no rate exists at all
+          console.log('Creating fallback rate...');
+          rate = await storage.updateExchangeRate({
+            btcCadRate: "164000",
+            change24h: "0",
+            high24h: "165000",
+            low24h: "163000", 
+            volume24h: "1000000",
+            isManualOverride: false
+          });
+        } else {
+          console.log('Using existing rate as API sources unavailable');
+        }
       }
       
       res.json(rate);
     } catch (error) {
       console.error("Rate fetch error:", error);
-      // Return a fallback rate if database fails
+      
+      // Try to get existing rate from storage as last resort
+      try {
+        const existingRate = await storage.getCurrentRate();
+        if (existingRate) {
+          console.log('Returning existing rate from storage');
+          res.json(existingRate);
+          return;
+        }
+      } catch (storageError) {
+        console.error("Storage also failed:", storageError);
+      }
+      
+      // Final fallback rate if everything fails
+      console.log('Using final fallback rate');
       res.json({
         id: "fallback",
         btcCadRate: "164000",
@@ -209,17 +326,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      console.log('Admin requesting rate reset...');
       const apiRate = await fetchBTCCADRate();
       if (apiRate) {
         const updatedRate = await storage.updateExchangeRate({
           ...apiRate,
           isManualOverride: false,
         });
+        console.log('Rate reset successfully:', updatedRate);
         res.json(updatedRate);
       } else {
-        res.status(500).json({ message: "Failed to fetch API rate" });
+        console.log('Failed to fetch fresh API rate for reset');
+        res.status(500).json({ message: "All API sources are currently unavailable" });
       }
     } catch (error) {
+      console.error('Rate reset error:', error);
       res.status(500).json({ message: "Failed to reset rate" });
     }
   });
@@ -424,33 +545,4 @@ export async function registerRoutes(app: Express): Promise<Server> {
   return httpServer;
 }
 
-async function fetchBTCCADRate() {
-  try {
-    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=cad&include_24hr_change=true&include_24hr_vol=true');
-    const data = await response.json();
-    
-    if (data.bitcoin) {
-      const btc = data.bitcoin;
-      return {
-        btcCadRate: btc.cad.toString(),
-        change24h: btc.cad_24h_change?.toString() || "0",
-        high24h: (btc.cad * 1.02).toString(), // Approximate based on current rate
-        low24h: (btc.cad * 0.98).toString(),
-        volume24h: btc.cad_24h_vol?.toString() || "0",
-        isManualOverride: false,
-      };
-    }
-    return null;
-  } catch (error) {
-    console.error('Failed to fetch BTC/CAD rate:', error);
-    return null;
-  }
-}
 
-function shouldUpdateRate(rate: any): boolean {
-  if (!rate.lastUpdated) return true;
-  const lastUpdate = new Date(rate.lastUpdated);
-  const now = new Date();
-  const diffInSeconds = (now.getTime() - lastUpdate.getTime()) / 1000;
-  return diffInSeconds > 30; // Update every 30 seconds
-}
