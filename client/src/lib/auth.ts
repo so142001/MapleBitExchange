@@ -7,7 +7,10 @@ export async function loginAdmin(username: string, password: string) {
 
 export async function logoutAdmin() {
   const response = await apiRequest("POST", "/api/admin/logout");
-  return response.json();
+  const result = await response.json();
+  // Redirect to login page after logout
+  window.location.href = "/login";
+  return result;
 }
 
 export async function checkAdminAuth() {

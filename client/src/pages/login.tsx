@@ -97,12 +97,7 @@ export default function Login() {
           </p>
         </div>
 
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 text-center">
-            <strong>Demo Admin Account:</strong><br />
-            Username: admin | Password: admin123
-          </p>
-        </div>
+
       </Card>
     </div>
   );

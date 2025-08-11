@@ -27,6 +27,7 @@ export default function Admin() {
   const [location, setLocation] = useLocation();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [rateOverride, setRateOverride] = useState("");
+  const [activeTab, setActiveTab] = useState("overview");
   const { toast } = useToast();
 
   // Check authentication status
@@ -187,28 +188,48 @@ export default function Admin() {
           <nav className="p-6">
             <ul className="space-y-2">
               <li>
-                <a href="#dashboard" className="flex items-center px-4 py-2 text-primary bg-blue-50 rounded-lg font-medium">
+                <button 
+                  onClick={() => setActiveTab("overview")}
+                  className={`w-full flex items-center px-4 py-2 rounded-lg font-medium ${
+                    activeTab === "overview" ? "text-primary bg-blue-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   <BarChart3 className="w-5 h-5 mr-3" />
                   Dashboard
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#rates" className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+                <button 
+                  onClick={() => setActiveTab("users")}
+                  className={`w-full flex items-center px-4 py-2 rounded-lg font-medium ${
+                    activeTab === "users" ? "text-primary bg-blue-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
+                  <Users className="w-5 h-5 mr-3" />
+                  Users
+                </button>
+              </li>
+              <li>
+                <button 
+                  onClick={() => setActiveTab("rates")}
+                  className={`w-full flex items-center px-4 py-2 rounded-lg font-medium ${
+                    activeTab === "rates" ? "text-primary bg-blue-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   <DollarSign className="w-5 h-5 mr-3" />
                   Exchange Rates
-                </a>
+                </button>
               </li>
               <li>
-                <a href="#settings" className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
+                <button 
+                  onClick={() => setActiveTab("settings")}
+                  className={`w-full flex items-center px-4 py-2 rounded-lg font-medium ${
+                    activeTab === "settings" ? "text-primary bg-blue-50" : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  }`}
+                >
                   <Settings className="w-5 h-5 mr-3" />
                   Settings
-                </a>
-              </li>
-              <li>
-                <a href="#analytics" className="flex items-center px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg">
-                  <TrendingUp className="w-5 h-5 mr-3" />
-                  Analytics
-                </a>
+                </button>
               </li>
             </ul>
           </nav>
@@ -222,7 +243,7 @@ export default function Admin() {
             <p className="text-gray-600">Monitor exchange performance and manage system settings</p>
           </div>
 
-          <Tabs defaultValue="overview" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="users">Users</TabsTrigger>
