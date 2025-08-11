@@ -97,30 +97,59 @@ export function PriceChart() {
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-2xl font-bold text-gray-900">Price History</h3>
         <div className="flex space-x-2">
-          <Button size="sm" className="bg-primary text-white">24H</Button>
-          <Button size="sm" variant="ghost" className="text-gray-500 hover:text-gray-700">7D</Button>
-          <Button size="sm" variant="ghost" className="text-gray-500 hover:text-gray-700">30D</Button>
+          <Button 
+            size="sm" 
+            variant={period === '24h' ? 'default' : 'ghost'}
+            className={period === '24h' ? "bg-primary text-white" : "text-gray-500 hover:text-gray-700"}
+            onClick={() => setPeriod('24h')}
+          >
+            24H
+          </Button>
+          <Button 
+            size="sm" 
+            variant={period === '7d' ? 'default' : 'ghost'}
+            className={period === '7d' ? "bg-primary text-white" : "text-gray-500 hover:text-gray-700"}
+            onClick={() => setPeriod('7d')}
+          >
+            7D
+          </Button>
+          <Button 
+            size="sm" 
+            variant={period === '30d' ? 'default' : 'ghost'}
+            className={period === '30d' ? "bg-primary text-white" : "text-gray-500 hover:text-gray-700"}
+            onClick={() => setPeriod('30d')}
+          >
+            30D
+          </Button>
         </div>
       </div>
       
-      <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-        <canvas ref={chartRef} className="w-full h-full" />
-      </div>
+      {isLoading ? (
+        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      ) : (
+        <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+          <canvas ref={chartRef} className="w-full h-full" />
+        </div>
+      )}
 
-      <div className="mt-6 grid grid-cols-3 gap-4 text-center">
-        <div>
-          <div className="text-gray-600 text-sm">24h Change</div>
-          <div className="text-lg font-semibold text-success">+2.34%</div>
+      {historyData && (
+        <div className="mt-6 grid grid-cols-3 gap-4 text-center">
+          <div>
+            <div className="text-gray-600 text-sm">Current Period</div>
+            <div className="text-lg font-semibold text-primary">{period.toUpperCase()}</div>
+          </div>
+          <div>
+            <div className="text-gray-600 text-sm">Data Points</div>
+            <div className="text-lg font-semibold text-gray-900">{historyData.prices?.length || 0}</div>
+          </div>
+          <div>
+            <div className="text-gray-600 text-sm">Source</div>
+            <div className="text-lg font-semibold text-success">CoinGecko</div>
+          </div>
         </div>
-        <div>
-          <div className="text-gray-600 text-sm">7d Change</div>
-          <div className="text-lg font-semibold text-error">-1.23%</div>
-        </div>
-        <div>
-          <div className="text-gray-600 text-sm">30d Change</div>
-          <div className="text-lg font-semibold text-success">+8.91%</div>
-        </div>
-      </div>
+      )}
     </Card>
   );
 }
