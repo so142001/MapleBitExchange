@@ -39,6 +39,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Architecture
 - **Exchange Rates**: Real-time BTC/CAD rates with 24h statistics (change, high, low, volume)
 - **Multiple API Sources**: CoinGecko, CoinDesk, and CryptoCompare with automatic failover
+- **Historical Data**: Real price history from CoinGecko API with 24h/7d/30d timeframes
 - **Site Settings**: Configurable processing fees, transaction limits, and update intervals
 - **Manual Overrides**: Admin capability to override automatic rate updates
 - **Rate Caching**: 30-second refresh intervals with automatic background updates

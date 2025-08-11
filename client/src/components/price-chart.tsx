@@ -1,14 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
 export function PriceChart() {
   const chartRef = useRef<HTMLCanvasElement>(null);
   const chartInstance = useRef<any>(null);
+  const [period, setPeriod] = useState('24h');
+
+  // Fetch real historical data
+  const { data: historyData, isLoading } = useQuery({
+    queryKey: ['/api/rates/history', period],
+    refetchInterval: 300000, // Update every 5 minutes
+    retry: 3,
+  });
 
   useEffect(() => {
     const loadChart = async () => {
-      if (!chartRef.current) return;
+      if (!chartRef.current || !historyData) return;
 
       // Dynamically import Chart.js
       const { Chart, registerables } = await import('chart.js');
@@ -22,22 +31,24 @@ export function PriceChart() {
         chartInstance.current.destroy();
       }
 
-      // Mock data for demonstration
-      const mockData = {
-        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+      // Use real historical data from CoinGecko API
+      const chartData = {
+        labels: historyData.labels,
         datasets: [{
           label: 'BTC/CAD',
-          data: [67200, 67800, 67400, 67845, 68100, 67900, 67845],
+          data: historyData.prices,
           borderColor: 'hsl(210.3, 100%, 42.9%)',
           backgroundColor: 'hsla(210.3, 100%, 42.9%, 0.1)',
           fill: true,
-          tension: 0.4
+          tension: 0.4,
+          pointRadius: 0,
+          pointHoverRadius: 4
         }]
       };
 
       chartInstance.current = new Chart(ctx, {
         type: 'line',
-        data: mockData,
+        data: chartData,
         options: {
           responsive: true,
           maintainAspectRatio: false,
@@ -46,6 +57,15 @@ export function PriceChart() {
               beginAtZero: false,
               grid: {
                 color: '#f3f4f6'
+              },
+              ticks: {
+                callback: function(value: any) {
+                  return new Intl.NumberFormat('en-CA', {
+                    style: 'currency',
+                    currency: 'CAD',
+                    minimumFractionDigits: 0
+                  }).format(value);
+                }
               }
             },
             x: {
@@ -70,7 +90,7 @@ export function PriceChart() {
         chartInstance.current.destroy();
       }
     };
-  }, []);
+  }, [historyData]);
 
   return (
     <Card className="bg-white rounded-xl shadow-lg p-8">

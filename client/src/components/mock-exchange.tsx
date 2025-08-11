@@ -45,10 +45,8 @@ export function MockExchange() {
 
   const buyMutation = useMutation({
     mutationFn: async (cadAmount: number) => {
-      return apiRequest("/api/trade/buy", {
-        method: "POST",
-        body: { cadAmount }
-      });
+      const response = await apiRequest("POST", "/api/trade/buy", { cadAmount });
+      return response.json();
     },
     onSuccess: (data: any) => {
       toast({
@@ -71,10 +69,8 @@ export function MockExchange() {
 
   const sellMutation = useMutation({
     mutationFn: async (btcAmount: number) => {
-      return apiRequest("/api/trade/sell", {
-        method: "POST",
-        body: { btcAmount }
-      });
+      const response = await apiRequest("POST", "/api/trade/sell", { btcAmount });
+      return response.json();
     },
     onSuccess: (data: any) => {
       toast({
